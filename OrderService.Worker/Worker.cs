@@ -1,21 +1,24 @@
+﻿using Microsoft.Extensions.Configuration;
+using OrderService.Worker.Data;
 using OrderService.Worker.Models;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 
 
 namespace OrderService.Worker
 {
     public class Worker : BackgroundService
     {
+        private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConfiguration _configuration;
         private IConnection _connection;
         private IModel _channel;
 
-        public Worker(IConfiguration configuration)
+        public Worker(IServiceScopeFactory scopeFactory, IConfiguration configuration)
         {
+            _scopeFactory = scopeFactory;
             _configuration = configuration;
         }
 
@@ -35,13 +38,33 @@ namespace OrderService.Worker
 
             var consumer = new EventingBasicConsumer(_channel);
 
-            consumer.Received += (model, ea) =>
+            //consumer.Received += (model, ea) =>
+            //{
+            //    var body = ea.Body.ToArray();
+            //    var message = Encoding.UTF8.GetString(body);
+            //    var order = JsonSerializer.Deserialize<Order>(message);
+
+            //    Console.WriteLine($"[x] New Order Received: {order.CustomerName} ordered {order.Quantity} x {order.Product}");
+            //};
+
+            consumer.Received += async (model, ea) =>
             {
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
                 var body = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
                 var order = JsonSerializer.Deserialize<Order>(message);
 
-                Console.WriteLine($"[x] New Order Received: {order.CustomerName} ordered {order.Quantity} x {order.Product}");
+                try
+                {
+                    db.Orders.Add(order);
+                    await db.SaveChangesAsync();
+                    Console.WriteLine($"[✔] Saved to DB: {order.CustomerName}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[!] DB Error: {ex.Message}");
+                }
             };
 
             _channel.BasicConsume(queue: "order-queue",
