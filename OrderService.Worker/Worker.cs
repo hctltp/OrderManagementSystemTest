@@ -5,6 +5,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Channels;
 
 
 namespace OrderService.Worker
@@ -30,22 +31,27 @@ namespace OrderService.Worker
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
 
-            _channel.QueueDeclare(queue: "order-queue",
-                                  durable: false,
-                                  exclusive: false,
-                                  autoDelete: false,
-                                  arguments: null);
+            //_channel.QueueDeclare(queue: "order-queue",
+            //                      durable: false,
+            //                      exclusive: false,
+            //                      autoDelete: false,
+            //                      arguments: null);
+
+            // DLX ve DLQ Setup
+            _channel.ExchangeDeclare("order_exchange", ExchangeType.Direct);
+            _channel.QueueDeclare("order_queue", durable: true, exclusive: false, autoDelete: false,
+                arguments: new Dictionary<string, object>
+                {
+                { "x-dead-letter-exchange", "order_dl_exchange" },
+                { "x-dead-letter-routing-key", "order_dl" }
+                });
+            _channel.QueueBind("order_queue", "order_exchange", "order");
+
+            _channel.ExchangeDeclare("order_dl_exchange", ExchangeType.Direct);
+            _channel.QueueDeclare("order_dl_queue", durable: true, exclusive: false, autoDelete: false);
+            _channel.QueueBind("order_dl_queue", "order_dl_exchange", "order_dl");
 
             var consumer = new EventingBasicConsumer(_channel);
-
-            //consumer.Received += (model, ea) =>
-            //{
-            //    var body = ea.Body.ToArray();
-            //    var message = Encoding.UTF8.GetString(body);
-            //    var order = JsonSerializer.Deserialize<Order>(message);
-
-            //    Console.WriteLine($"[x] New Order Received: {order.CustomerName} ordered {order.Quantity} x {order.Product}");
-            //};
 
             consumer.Received += async (model, ea) =>
             {
