@@ -13,3 +13,9 @@
 /.vs/OrderManagementSystemTest/v17/.suo
 /.vs/OrderManagementSystemTest/v17/DocumentLayout.backup.json
 /.vs/OrderManagementSystemTest/v17/DocumentLayout.json
+/OrderService.Worker/obj/Debug/net8.0
+/OrderService.Worker/obj/OrderService.Worker.csproj.nuget.dgspec.json
+/OrderService.Worker/obj/OrderService.Worker.csproj.nuget.g.props
+/OrderService.Worker/obj/OrderService.Worker.csproj.nuget.g.targets
+/OrderService.Worker/obj/project.assets.json
+/OrderService.Worker/obj/project.nuget.cache
