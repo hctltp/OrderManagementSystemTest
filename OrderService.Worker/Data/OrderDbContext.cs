@@ -11,6 +11,7 @@ namespace OrderService.Worker.Data
     public class OrderDbContext : DbContext
     {
         public DbSet<Order> Orders { get; set; }
+        public DbSet<FailedOrder> FailedOrders { get; set; }
 
         public OrderDbContext(DbContextOptions<OrderDbContext> options)
             : base(options) { }

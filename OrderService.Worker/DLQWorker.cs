@@ -1,4 +1,6 @@
-﻿using RabbitMQ.Client;
+﻿using OrderService.Worker.Data;
+using OrderService.Worker.Models;
+using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System;
 using System.Collections.Generic;
@@ -11,9 +13,11 @@ namespace OrderService.Worker
     public class DLQWorker : BackgroundService
     {
         private readonly IConfiguration _configuration;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public DLQWorker(IConfiguration configuration)
+        public DLQWorker(IServiceScopeFactory scopeFactory, IConfiguration configuration)
         {
+            _scopeFactory = scopeFactory;
             _configuration = configuration;
         }
 
@@ -27,10 +31,11 @@ namespace OrderService.Worker
             var connection = factory.CreateConnection();
             var channel = connection.CreateModel();
 
-            channel.QueueDeclare("dlq.queue", durable: true, exclusive: false, autoDelete: false);
+            channel.QueueDeclare("dlq.queue", durable: true, exclusive: false, autoDelete: false, arguments: null);
 
             var consumer = new EventingBasicConsumer(channel);
-            consumer.Received += (model, ea) =>
+
+            consumer.Received += async (model, ea) =>
             {
                 var body = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
@@ -38,6 +43,24 @@ namespace OrderService.Worker
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"[DLQ] Hatalı Mesaj Alındı: {message}");
                 Console.ResetColor();
+
+
+                using var scope = _scopeFactory.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+
+                var failedOrder = new FailedOrder
+                {
+                    Payload = message,
+                    ErrorMessage = "Mesaj DLQ kuyruğuna düştü."
+                };
+
+                db.FailedOrders.Add(failedOrder);
+                await db.SaveChangesAsync();
+
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[DLQ] Kayıt Edildi: {message}");
+                Console.ResetColor();
+              
 
                 // İsteğe bağlı olarak log tablosuna veya dosyaya yazılabilir
                 channel.BasicAck(ea.DeliveryTag, false);
