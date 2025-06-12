@@ -61,8 +61,15 @@ namespace OrderService.Worker
                 var message = Encoding.UTF8.GetString(body);
                 var order = JsonSerializer.Deserialize<Order>(message);
 
+               
+
                 try
                 {
+                    if (order.Quantity <= 0)
+                    {
+                        throw new Exception("Quantity must be greater than 0.");
+                    }
+
                     db.Orders.Add(order);
                     await db.SaveChangesAsync();
                     Console.WriteLine($"[✔] Saved to DB: {order.CustomerName}");
