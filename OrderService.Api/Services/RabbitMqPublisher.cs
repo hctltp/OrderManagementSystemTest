@@ -8,7 +8,6 @@ namespace OrderService.Api.Services
     public class RabbitMqPublisher
     {
         private readonly IConfiguration _configuration;
-        private readonly string _queueName = "order-queue";
 
         public RabbitMqPublisher(IConfiguration configuration)
         {
@@ -17,7 +16,7 @@ namespace OrderService.Api.Services
 
         public void Publish(Order order)
         {
-            var factory = new ConnectionFactory()
+            var factory = new ConnectionFactory
             {
                 HostName = _configuration["RabbitMQ:HostName"] ?? "localhost"
             };
@@ -25,19 +24,20 @@ namespace OrderService.Api.Services
             using var connection = factory.CreateConnection();
             using var channel = connection.CreateModel();
 
-            channel.QueueDeclare(queue: _queueName,
-                                 durable: false,
-                                 exclusive: false,
-                                 autoDelete: false,
-                                 arguments: null);
+            channel.ExchangeDeclare("orders.exchange", ExchangeType.Direct, durable: true);
 
-            string json = JsonSerializer.Serialize(order);
+            var json = JsonSerializer.Serialize(order);
             var body = Encoding.UTF8.GetBytes(json);
 
-            channel.BasicPublish(exchange: "",
-                                 routingKey: _queueName,
-                                 basicProperties: null,
-                                 body: body);
+            var props = channel.CreateBasicProperties();
+            props.Persistent = true;
+
+            channel.BasicPublish(
+                exchange: "orders.exchange",
+                routingKey: "orders",
+                basicProperties: props,
+                body: body
+            );
         }
     }
 }
