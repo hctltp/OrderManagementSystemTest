@@ -8,7 +8,7 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHostedService<Worker>();
-
+builder.Services.AddHostedService<DLQWorker>();
 
 
 
