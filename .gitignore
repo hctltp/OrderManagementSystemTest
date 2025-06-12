@@ -1,7 +1,10 @@
 ﻿################################################################################
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
-
+/OrderService.Worker/obj/
+/OrderService.Worker/bin/
+/OrderService.Api/bin/
+/OrderService.Api/obj/
 /.vs/OrderManagementSystemTest/CopilotIndices/17.14.734.62261
 /OrderService.Worker/bin/Debug/net8.0/OrderService.Worker.dll
 /OrderService.Worker/bin/Debug/net8.0/OrderService.Worker.exe
